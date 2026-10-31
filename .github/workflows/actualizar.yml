@@ -25,7 +25,7 @@ jobs:
           node -e '
           const fetch = require("node-fetch");
 
-          async function sincronizarTodo() {
+          async function probarEnvio() {
             const token = process.env.SUPERCELL_TOKEN;
             const webhookUrl = process.env.SHEET_WEB_APP_URL;
             const clanTag = "%232CG8JCYCP";
@@ -35,29 +35,32 @@ jobs:
               "Accept": "application/json"
             };
 
-            const [resClan, resMiembros, resWar] = await Promise.all([
-              fetch("https://api.clashofclans.com/v1/clans/" + clanTag, { headers }),
-              fetch("https://api.clashofclans.com/v1/clans/" + clanTag + "/members", { headers }),
-              fetch("https://api.clashofclans.com/v1/clans/" + clanTag + "/currentwar", { headers })
-            ]);
-
-            const clanData = await resClan.json();
+            console.log("Obteniendo miembros de Supercell...");
+            const resMiembros = await fetch("https://api.clashofclans.com/v1/clans/" + clanTag + "/members", { headers });
             const miembrosData = await resMiembros.json();
-            const warData = await resWar.json();
 
-            const payload = {
-              clanInfo: resClan.status === 200 ? { name: clanData.name, clanLevel: clanData.clanLevel, clanPoints: clanData.clanPoints } : null,
-              members: resMiembros.status === 200 ? miembrosData.items.map(m => ({ name: m.name, role: m.role, donations: m.donations, trophies: m.trophies })) : [],
-              warInfo: resWar.status === 200 ? { state: warData.state, opponent: warData.opponent ? warData.opponent.name : "N/A", clanStars: warData.clan ? warData.clan.stars : 0, oppStars: warData.opponent ? warData.opponent.stars : 0 } : { state: "No en guerra" }
-            };
+            if (resMiembros.status === 200) {
+              const payload = {
+                members: miembrosData.items.map(m => ({
+                  name: m.name,
+                  role: m.role,
+                  donations: m.donations,
+                  trophies: m.trophies
+                }))
+              };
 
-            const resSheet = await fetch(webhookUrl, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify(payload)
-            });
+              console.log("Enviando " + payload.members.length + " miembros al Webhook...");
+              const resSheet = await fetch(webhookUrl, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload)
+              });
 
-            console.log("Resultado del envío a Google Sheets:", await resSheet.text());
+              const resultadoTexto = await resSheet.text();
+              console.log("Respuesta exacta de Apps Script:", resultadoTexto);
+            } else {
+              console.log("Error al consultar Supercell:", JSON.stringify(miembrosData));
+            }
           }
-          sincronizarTodo();
+          probarEnvio();
           '
