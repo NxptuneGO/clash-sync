@@ -14,19 +14,20 @@ jobs:
         with:
           node-version: '18'
 
-      - name: Instalar dependencias esenciales
+      - name: Instalar dependencias
         run: npm install node-fetch@2
 
-      - name: Sincronizar datos de Kyzen Team
+      - name: Enviar datos a Google Sheets
         env:
           SUPERCELL_TOKEN: ${{ secrets.SUPERCELL_TOKEN }}
-          SHEET_ID: ${{ secrets.SHEET_ID }}
+          SHEET_WEB_APP_URL: ${{ secrets.SHEET_WEB_APP_URL }}
         run: |
           node -e '
           const fetch = require("node-fetch");
 
-          async function sincronizarClan() {
+          async function enviarDatos() {
             const token = process.env.SUPERCELL_TOKEN;
+            const webhookUrl = process.env.SHEET_WEB_APP_URL;
             const clanTag = "%232CG8JCYCP";
             
             const headers = {
@@ -34,16 +35,40 @@ jobs:
               "Accept": "application/json"
             };
 
-            console.log("Conectando con Supercell para Kyzen Team...");
-            const res = await fetch("https://api.clashofclans.com/v1/clans/" + clanTag + "/members", { headers });
-            const data = await res.json();
-            
-            if (res.status === 200) {
-              console.log("¡Conexión y lectura exitosa!");
-              console.log("Total de miembros obtenidos:", data.items.length);
+            console.log("Obteniendo datos de Supercell...");
+            const resClan = await fetch("https://api.clashofclans.com/v1/clans/" + clanTag, { headers });
+            const clanData = await resClan.json();
+
+            const resMiembros = await fetch("https://api.clashofclans.com/v1/clans/" + clanTag + "/members", { headers });
+            const miembrosData = await resMiembros.json();
+
+            if (resClan.status === 200 && resMiembros.status === 200) {
+              const payload = {
+                clanInfo: {
+                  name: clanData.name,
+                  clanLevel: clanData.clanLevel,
+                  clanPoints: clanData.clanPoints
+                },
+                members: miembrosData.items.map(m => ({
+                  name: m.name,
+                  role: m.role,
+                  donations: m.donations,
+                  trophies: m.trophies
+                }))
+              };
+
+              console.log("Enviando datos a Google Sheets...");
+              const resSheet = await fetch(webhookUrl, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload)
+              });
+
+              const result = await resSheet.text();
+              console.log("Respuesta de Google Sheets:", result);
             } else {
-              console.log("Error en la respuesta:", JSON.stringify(data));
+              console.log("Error al obtener datos de Supercell.");
             }
           }
-          sincronizarClan();
+          enviarDatos();
           '
