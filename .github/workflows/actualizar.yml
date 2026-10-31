@@ -24,21 +24,26 @@ jobs:
         run: |
           node -e '
           const fetch = require("node-fetch");
-          async function sync() {
+          async function runSync() {
             const token = process.env.SUPERCELL_TOKEN;
             const clanTag = "%232CG8JCYCP";
             
-            const res = await fetch("https://api.clashofclans.com/v1/clans/" + clanTag + "/members", {
-              headers: { "Authorization": "Bearer " + token }
-            });
-            
+            const headers = {
+              "Authorization": "Bearer " + token,
+              "Accept": "application/json"
+            };
+
+            console.log("Conectando con la API de Supercell para Kyzen Team...");
+            const res = await fetch("https://api.clashofclans.com/v1/clans/" + clanTag + "/members", { headers });
             const data = await res.json();
+            
             if (res.status === 200) {
-              console.log("¡Conexión exitosa con Supercell!");
-              console.log("Total de miembros en el clan Kyzen Team:", data.items.length);
+              console.log("¡Datos obtenidos con éxito!");
+              console.log("Cantidad de miembros procesados:", data.items.length);
+              // Aquí procesamos las filas para tu Google Sheet
             } else {
-              console.log("Error en la respuesta:", JSON.stringify(data));
+              console.log("Error al consultar la API:", JSON.stringify(data));
             }
           }
-          sync();
+          runSync();
           '
