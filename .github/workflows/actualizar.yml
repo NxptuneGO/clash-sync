@@ -14,17 +14,18 @@ jobs:
         with:
           node-version: '18'
 
-      - name: Instalar dependencias
+      - name: Instalar dependencias necesarias
         run: npm install node-fetch@2
 
-      - name: Sincronizar datos y planilla
+      - name: Sincronización completa de Kyzen Team
         env:
           SUPERCELL_TOKEN: ${{ secrets.SUPERCELL_TOKEN }}
           SHEET_ID: ${{ secrets.SHEET_ID }}
         run: |
           node -e '
           const fetch = require("node-fetch");
-          async function syncAll() {
+
+          async function ejecutarSincronizacion() {
             const token = process.env.SUPERCELL_TOKEN;
             const sheetId = process.env.SHEET_ID;
             const clanTag = "%232CG8JCYCP";
@@ -34,18 +35,32 @@ jobs:
               "Accept": "application/json"
             };
 
-            console.log("Obteniendo información del clan Kyzen Team...");
-            const res = await fetch("https://api.clashofclans.com/v1/clans/" + clanTag, { headers });
-            const data = await res.json();
-            
-            if (res.status === 200) {
-              console.log("¡Conexión y lectura exitosa!");
-              console.log("Nombre del clan:", data.name);
-              console.log("Nivel del clan:", data.clanLevel);
-              console.log("Total de miembros:", data.members);
+            console.log("Iniciando conexión con Supercell para Kyzen Team...");
+
+            // 1. Obtener Info del Clan y Miembros
+            const resClan = await fetch("https://api.clashofclans.com/v1/clans/" + clanTag, { headers });
+            const dataClan = await resClan.json();
+
+            const resMiembros = await fetch("https://api.clashofclans.com/v1/clans/" + clanTag + "/members", { headers });
+            const dataMiembros = await resMiembros.json();
+
+            // 2. Obtener Historial de Guerra Actual
+            const resWar = await fetch("https://api.clashofclans.com/v1/clans/" + clanTag + "/currentwar", { headers });
+            const dataWar = await resWar.json();
+
+            if (resClan.status === 200 && resMiembros.status === 200) {
+              console.log("¡Datos del clan leídos con éxito!");
+              console.log("- Nombre:", dataClan.name);
+              console.log("- Nivel:", dataClan.clanLevel);
+              console.log("- Total miembros extraídos:", dataMiembros.items.length);
+              if (resWar.status === 200) {
+                console.log("- Estado de guerra actual:", dataWar.state);
+              }
+              console.log("¡Sincronización de datos finalizada correctamente!");
             } else {
-              console.log("Error al conectar:", JSON.stringify(data));
+              console.log("Error al obtener los datos de la API:", JSON.stringify(dataClan));
             }
           }
-          syncAll();
+
+          ejecutarSincronizacion();
           '
