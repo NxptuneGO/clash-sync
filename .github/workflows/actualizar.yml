@@ -1,0 +1,42 @@
+name: Sincronizar Clash of Clans con Sheets
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 */6 * * *'
+
+jobs:
+  sincronizar:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Configurar Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+
+      - name: Instalar dependencias
+        run: npm install node-fetch@2
+
+      - name: Probar conexión con Supercell
+        env:
+          SUPERCELL_TOKEN: ${{ secrets.SUPERCELL_TOKEN }}
+          SHEET_ID: ${{ secrets.SHEET_ID }}
+        run: |
+          node -e '
+          const fetch = require("node-fetch");
+          async function test() {
+            const token = process.env.SUPERCELL_TOKEN;
+            const clanTag = "%232CG8JCYCP";
+            const res = await fetch("https://api.clashofclans.com/v1/clans/" + clanTag + "/members", {
+              headers: { "Authorization": "Bearer " + token }
+            });
+            console.log("Código de respuesta de Supercell:", res.status);
+            const data = await res.json();
+            if (res.status === 200) {
+              console.log("¡Conexión exitosa! Total de miembros obtenidos:", data.items.length);
+            } else {
+              console.log("Error:", JSON.stringify(data));
+            }
+          }
+          test();
+          '
