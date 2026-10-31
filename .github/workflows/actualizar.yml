@@ -15,39 +15,30 @@ jobs:
           node-version: '18'
 
       - name: Instalar dependencias
-        run: npm install node-fetch@2 google-spreadsheet@4.1.4
+        run: npm install node-fetch@2
 
-      - name: Sincronizar con Google Sheets
+      - name: Sincronizar datos del clan
         env:
           SUPERCELL_TOKEN: ${{ secrets.SUPERCELL_TOKEN }}
           SHEET_ID: ${{ secrets.SHEET_ID }}
         run: |
           node -e '
-          const { GoogleSpreadsheet } = require("google-spreadsheet");
-          const { JWT } = require("google-auth-library");
           const fetch = require("node-fetch");
-
-          async function syncData() {
+          async function sync() {
             const token = process.env.SUPERCELL_TOKEN;
-            const sheetId = process.env.SHEET_ID;
             const clanTag = "%232CG8JCYCP";
             
-            const headers = {
-              "Authorization": "Bearer " + token,
-              "Accept": "application/json"
-            };
-
-            console.log("Obteniendo datos de miembros desde Supercell...");
-            const resMiembros = await fetch("https://api.clashofclans.com/v1/clans/" + clanTag + "/members", { headers });
-            const dataMiembros = await resMiembros.json();
+            const res = await fetch("https://api.clashofclans.com/v1/clans/" + clanTag + "/members", {
+              headers: { "Authorization": "Bearer " + token }
+            });
             
-            if (resMiembros.status === 200) {
-              console.log("¡Datos de miembros obtenidos con éxito! Total:", dataMiembros.items.length);
+            const data = await res.json();
+            if (res.status === 200) {
+              console.log("¡Conexión exitosa con Supercell!");
+              console.log("Total de miembros en el clan Kyzen Team:", data.items.length);
             } else {
-              console.log("Error al obtener miembros:", JSON.stringify(dataMiembros));
+              console.log("Error en la respuesta:", JSON.stringify(data));
             }
-            
-            console.log("¡Sincronización completada correctamente!");
           }
-          syncData();
+          sync();
           '
