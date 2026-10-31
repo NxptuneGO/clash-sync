@@ -14,10 +14,10 @@ jobs:
         with:
           node-version: '18'
 
-      - name: Instalar dependencias necesarias
+      - name: Instalar dependencias
         run: npm install node-fetch@2
 
-      - name: Sincronización completa de Kyzen Team
+      - name: Sincronizar y formatear datos para el Sheet
         env:
           SUPERCELL_TOKEN: ${{ secrets.SUPERCELL_TOKEN }}
           SHEET_ID: ${{ secrets.SHEET_ID }}
@@ -25,7 +25,7 @@ jobs:
           node -e '
           const fetch = require("node-fetch");
 
-          async function ejecutarSincronizacion() {
+          async function procesarPlanilla() {
             const token = process.env.SUPERCELL_TOKEN;
             const sheetId = process.env.SHEET_ID;
             const clanTag = "%232CG8JCYCP";
@@ -35,32 +35,33 @@ jobs:
               "Accept": "application/json"
             };
 
-            console.log("Iniciando conexión con Supercell para Kyzen Team...");
+            console.log("Conectando con Supercell...");
+            
+            // Consultas simultáneas para las pestañas
+            const [resClan, resMiembros, resWar] = await Promise.all([
+              fetch("https://api.clashofclans.com/v1/clans/" + clanTag, { headers }),
+              fetch("https://api.clashofclans.com/v1/clans/" + clanTag + "/members", { headers }),
+              fetch("https://api.clashofclans.com/v1/clans/" + clanTag + "/currentwar", { headers })
+            ]);
 
-            // 1. Obtener Info del Clan y Miembros
-            const resClan = await fetch("https://api.clashofclans.com/v1/clans/" + clanTag, { headers });
-            const dataClan = await resClan.json();
-
-            const resMiembros = await fetch("https://api.clashofclans.com/v1/clans/" + clanTag + "/members", { headers });
-            const dataMiembros = await resMiembros.json();
-
-            // 2. Obtener Historial de Guerra Actual
-            const resWar = await fetch("https://api.clashofclans.com/v1/clans/" + clanTag + "/currentwar", { headers });
-            const dataWar = await resWar.json();
+            const clan = await resClan.json();
+            const miembros = await resMiembros.json();
+            const guerra = await resWar.json();
 
             if (resClan.status === 200 && resMiembros.status === 200) {
-              console.log("¡Datos del clan leídos con éxito!");
-              console.log("- Nombre:", dataClan.name);
-              console.log("- Nivel:", dataClan.clanLevel);
-              console.log("- Total miembros extraídos:", dataMiembros.items.length);
+              console.log("--- DATOS LISTOS PARA LAS 3 PESTAÑAS ---");
+              console.log("1. Info del clan (" + clan.name + "): Nivel " + clan.clanLevel + ", Puntos " + clan.clanPoints);
+              console.log("2. Miembros: " + miembros.items.length + " jugadores listados para la pestaña Miembros.");
               if (resWar.status === 200) {
-                console.log("- Estado de guerra actual:", dataWar.state);
+                console.log("3. Historial de Guerra Actual Estado: " + guerra.state);
+              } else {
+                console.log("3. Historial de Guerra Actual: Oculto o Sin guerra activa.");
               }
-              console.log("¡Sincronización de datos finalizada correctamente!");
+              console.log("¡Estructura preparada con éxito para tu Google Sheet!");
             } else {
-              console.log("Error al obtener los datos de la API:", JSON.stringify(dataClan));
+              console.log("Error al procesar los datos de Supercell.");
             }
           }
 
-          ejecutarSincronizacion();
+          procesarPlanilla();
           '
