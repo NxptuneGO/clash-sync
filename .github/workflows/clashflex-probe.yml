@@ -1,0 +1,39 @@
+name: ClashFlex diagnostic probe
+
+on:
+  workflow_dispatch:
+  # Keep this manual until the probe proves that ClashFlex exposes the required
+  # attack-level data reliably. Do not enable frequent scheduled scraping yet.
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install dependencies
+        run: npm install
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Run diagnostic probe
+        env:
+          CLAN_TAG: "#2CG8JCYCP"
+          PROBE_WAIT_MS: "15000"
+        run: npm run probe
+      - name: Upload diagnostic artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: clashflex-probe
+          path: artifacts/
+          if-no-files-found: warn
+          retention-days: 7
