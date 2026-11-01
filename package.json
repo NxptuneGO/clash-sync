@@ -1,0 +1,14 @@
+{
+  "name": "kyzen-clashflex-sync",
+  "version": "0.1.0",
+  "private": true,
+  "description": "ClashFlex browser probe and future war-history synchronizer for Kyzen Team",
+  "scripts": {
+    "probe": "node src/probe-clashflex.js",
+    "test": "node --test"
+  },
+  "engines": { "node": ">=20" },
+  "devDependencies": {
+    "playwright": "^1.56.1"
+  }
+}
